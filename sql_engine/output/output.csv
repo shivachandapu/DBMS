@@ -1,0 +1,11 @@
+age,marital,education,balance,housing,contact,day,duration,pdays,deposit
+41,single,primary,1618,yes,unknown,14,1553,-1,yes
+59,married,secondary,1521,yes,unknown,14,1125,-1,yes
+41,married,secondary,2823,yes,unknown,14,858,-1,yes
+48,married,secondary,1405,yes,unknown,14,629,-1,yes
+40,married,secondary,1535,yes,unknown,14,704,-1,yes
+48,married,secondary,1596,yes,unknown,14,760,-1,yes
+60,married,primary,1542,yes,unknown,14,930,-1,yes
+40,single,unknown,3652,yes,unknown,14,1028,-1,yes
+51,married,secondary,7180,yes,unknown,14,927,-1,yes
+41,divorced,secondary,5291,yes,unknown,14,1423,-1,yes

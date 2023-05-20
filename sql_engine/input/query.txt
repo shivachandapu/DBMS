@@ -1,0 +1,4 @@
+SELECT *
+FROM bank_2.csv
+WHERE balance >= 1000
+LIMIT 10
