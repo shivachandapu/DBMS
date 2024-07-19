@@ -254,10 +254,10 @@ void upgrade(std::string resource_name, int txn_id){
         for(iter = lst.begin(); iter != lst.end(); ++iter){
             if(iter->getTxnId() == txn_id && iter->getLockType() == SHARED){
                 if(iter->getStatus() == WAITING){
-                    std::list<lockable_resource>::iterator temp = iter;
+                    lockable_resource temp = *iter;
                     lst.erase(iter);
-                    temp->setLockType(EXCLUSIVE);
-                    lst.emplace_back(*temp);
+                    temp.setLockType(EXCLUSIVE);
+                    lst.emplace_back(temp);
                 }
                 else{
                     if(next(iter,1)->getLockType() == EXCLUSIVE){
