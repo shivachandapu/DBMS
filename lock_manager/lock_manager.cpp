@@ -19,6 +19,7 @@ A resource will be identified by a 10 character string.
 Implement Upgrade and Downgrade
 */
 
+#include "./lockable_resource.h"
 #include <iostream>
 #include <unordered_map>
 #include <list>
@@ -26,52 +27,6 @@ Implement Upgrade and Downgrade
 using namespace std;
 
 // Abstraction of a resource that can be locked. 
-// A resource is locked in a 'mode' by a 'transaction'. 
-// The lock request may be granted or put on wait based on a lock compatibility matrix. 
-enum lockType{
-  SHARED,
-  EXCLUSIVE
-};
-
-enum lockStatus{
-  GRANTED,
-  WAITING
-};
-
-class lockable_resource{ 
-    private:
-        int  txn_id_;
-        lockType lock_type_;        // SHARED, EXCLUSIVE
-        lockStatus lock_status_;    // GRANTED, WAITING
-        
-    public:
-        lockable_resource(int txn_id_, lockType lock_type_, lockStatus lock_status_){
-            this->txn_id_ = txn_id_;
-            this->lock_type_ = lock_type_;
-            this->lock_status_ = lock_status_;
-        }
-        
-        // Getters and Setters
-        lockType getLockType(){
-            return(lock_type_);
-        }
-        lockStatus getStatus(){
-            return(lock_status_);
-        }
-        int getTxnId(){
-            return(txn_id_);
-        }
-        void setLockStatus(lockStatus st){
-            lock_status_ = st;
-        }
-        void setLockType(lockType lt){
-            lock_type_ = lt;
-        }
-};
-
-// Resource
-// type of lock
-// txn_id
 
 void lock(std::string resource_name, int txn_id, lockType lock_type); // Lock function prototype
 void unlock(std::string resource_name, int txn_id);     // Unlock function prototype
@@ -87,36 +42,99 @@ unordered_map<int, std::string> type_table({{lockType::EXCLUSIVE,"EXCLUSIVE"}, {
 // mapping of the lock status(Granted/Waiting) to the string (GRANTED/WAITING)
 unordered_map<int, std::string> status_table({{lockStatus::GRANTED,"GRANTED"}, {lockStatus::WAITING,"WAITING"}});
 
+
+void userInput(){
+    
+    do{
+        cout<<"************ Possible Requests ************"<<endl;
+        cout<<" 1. Lock\n 2. Unlock \n 3. Upgrade \n 4. Downgrade \n 5. exit"<<endl;
+
+        cout<<"Choose one of the above operations: ";
+        int choice;
+        cin>>choice;
+        getchar();
+
+        string resource;
+        string l_type;
+        int t_id;
+
+        switch(choice){
+            case 1: {
+                cout<<"\nEnter the resource: ";
+                cin>>resource;
+                
+                cout<<"Enter the transaction id: ";
+                cin>>t_id;
+                
+                cout<<"Enter the lock type: ";
+                cin>>l_type;
+
+                if(l_type == "SHARED")
+                    lock(resource, t_id, SHARED);
+                else if(l_type == "EXCLUSIVE") 
+                    lock(resource, t_id, EXCLUSIVE);
+
+                printStatus(resource);
+
+                break;
+            }
+
+            case 2: {
+                cout<<"\nEnter the resource: ";
+                cin>>resource;
+                
+                cout<<"Enter the transaction id: ";
+                cin>>t_id;
+                
+                unlock(resource, t_id);
+                printStatus(resource);
+
+                break;
+            }
+
+            case 3: {
+                cout<<"\nEnter the resource: ";
+                cin>>resource;
+                
+                cout<<"Enter the transaction id: ";
+                cin>>t_id;
+                
+                upgrade(resource, t_id);
+                printStatus(resource);
+
+                break;
+            }
+
+            case 4: {
+                cout<<"\nEnter the resource: ";
+                cin>>resource;
+                
+                cout<<"Enter the transaction id: ";
+                cin>>t_id;
+                
+                downgrade(resource, t_id);
+                printStatus(resource);
+
+                break;
+            }
+
+            case 5: {
+                cout<<"\nThe lock manager terminated!\n"<<endl;
+                exit(0);
+                break;
+            }
+        }
+    }while(true);
+
+    
+}
+
+
 int main(){  
     system("clear");
     cout<<"(Transaction_ID, Lock_Type, Lock_Status)\n"<<endl;
-    
-    lock("AAA", 1234, SHARED);
-    printStatus("AAA");
 
-    lock("AAA", 5678, EXCLUSIVE);
-    printStatus("AAA");
-    
-    lock("AAA", 6969, SHARED);
-    printStatus("AAA");
-
-    unlock("AAA",1234);
-    printStatus("AAA");
-
-    lock("AAA", 1234, EXCLUSIVE);
-    printStatus("AAA");
-
-    downgrade("AAA", 5678);
-    printStatus("AAA");
-
-    downgrade("AAA", 1234);
-    printStatus("AAA");
-
-    lock("AAA",9876, SHARED);
-    printStatus("AAA");
-    
-    upgrade("AAA", 9876);
-    printStatus("AAA");
+    userInput();
     
     cout<<endl;
     return 0;
@@ -126,10 +144,10 @@ int main(){
 void printStatus(std::string resource_name){
     if (lock_table.find(resource_name) != lock_table.end()){
         list<lockable_resource> lst = lock_table[resource_name];
-        std::list<lockable_resource>::iterator iter;
+        // std::list<lockable_resource>::iterator iter;
         
-        for(iter = lst.begin(); iter!=lst.end(); ++iter){
-            cout<<"("<<iter->getTxnId()<<","<<type_table[iter->getLockType()]<<","<<status_table[iter->getStatus()]<<")\t"<<endl;
+        for(auto iter = lst.begin(); iter!=lst.end(); ++iter){
+            cout<<"("<<iter->getTxnId()<<","<<type_table[iter->getLockType()]<<","<<status_table[iter->getLockStatus()]<<")\t"<<endl;
         }
         cout<<endl;
     }
@@ -142,7 +160,7 @@ void lock(std::string resource_name, int txn_id, lockType lock_type){
     // Check if lock exists. 
     // If not: Add the transaction to map, create new list and add lockable_resource to list
     
-    cout<<"\033[102m"<<"Lock("<<resource_name<<","<<txn_id<<","<<type_table[lock_type]<<")"<<"\033[0m"<<endl;
+    cout<<"\n\033[102m"<<"Lock("<<resource_name<<","<<txn_id<<","<<type_table[lock_type]<<")"<<"\033[0m"<<endl;
 
     if (lock_table.find(resource_name) == lock_table.end()){
         // if the resource does not exist in the lock table => 
@@ -163,12 +181,12 @@ void lock(std::string resource_name, int txn_id, lockType lock_type){
         list<lockable_resource> lst = lock_table[resource_name];
 
         // check lock compatibility matrix
-        std::list<lockable_resource>::iterator iter;
+        list<lockable_resource>::iterator iter;
 
         for(iter = lst.begin(); iter!=lst.end(); ++iter){
             // Iterating over all the lockable resources
             lockType lct = iter->getLockType();
-            lockStatus lcs = iter->getStatus();
+            lockStatus lcs = iter->getLockStatus();
 
             if (lct==0 && lock_type==0){
                 // If the lock type is Shared and lock status is Granted.
@@ -194,13 +212,13 @@ void lock(std::string resource_name, int txn_id, lockType lock_type){
 }
 
 void unlock(std::string resource_name, int txn_id){
-    cout<<"\033[101m"<<"Unlock("<<resource_name<<","<<txn_id<<")"<<"\033[0m"<<endl;
+    cout<<"\n\033[101m"<<"Unlock("<<resource_name<<","<<txn_id<<")"<<"\033[0m"<<endl;
 
     // Check if the resource is present in the lock table or not.
     if (lock_table.find(resource_name) != lock_table.end()){
         
         list<lockable_resource> lst = lock_table[resource_name];
-        std::list<lockable_resource>::iterator iter;
+        list<lockable_resource>::iterator iter;
         
         // Delete the transaction by iterating through the list
         for(iter=lst.begin();iter!=lst.end();++iter){
@@ -213,7 +231,7 @@ void unlock(std::string resource_name, int txn_id){
         iter = lst.begin();
         // If the first transaction is Waiting and in an Exclusive state:
         // Then Grant the lock and return
-        if(iter->getStatus()==1 && iter->getLockType()==1){
+        if(iter->getLockStatus()==1 && iter->getLockType()==1){
                 iter->setLockStatus(GRANTED);
                 lock_table[resource_name] = lst;
                 return;
@@ -222,9 +240,9 @@ void unlock(std::string resource_name, int txn_id){
         // If the first transaction is Waiting and in a Shared state:
         // Grant the lock to all the transactions that are Waiting for a lock with Shared state.
         // After granting the lock, shift the transaction to the front of the list.
-        else if(iter->getStatus()==1 && iter->getLockType()==0){
+        else if(iter->getLockStatus()==1 && iter->getLockType()==0){
             for(iter=lst.begin();iter!=lst.end();){
-                lockStatus lcs = iter->getStatus();
+                lockStatus lcs = iter->getLockStatus();
                 lockType lct = iter->getLockType();
                 if(lcs==1 && lct==0){
                     iter->setLockStatus(GRANTED);
@@ -244,82 +262,96 @@ void unlock(std::string resource_name, int txn_id){
 
 // function to upgrade the lock type of the resource to the transaction
 void upgrade(std::string resource_name, int txn_id){
-    cout<<"\033[104m"<<"Upgrade("<<resource_name<<","<<txn_id<<")"<<"\033[0m"<<endl;
+    cout<<"\n\033[104m"<<"Upgrade("<<resource_name<<","<<txn_id<<")"<<"\033[0m"<<endl;
 
     // Check if the resource is present in the lock table or not.
-    if (lock_table.find(resource_name) != lock_table.end()){
-        list<lockable_resource> lst = lock_table[resource_name];
-        std::list<lockable_resource>::iterator iter;
+    if (lock_table.find(resource_name) == lock_table.end()){
+        cout<<"\nThe resource is not present in the lock table to perform Upgrade.\n";
+        return;
+    }
 
-        for(iter = lst.begin(); iter != lst.end(); ++iter){
-            if(iter->getTxnId() == txn_id && iter->getLockType() == SHARED){
-                if(iter->getStatus() == WAITING){
-                    lockable_resource temp = *iter;
-                    lst.erase(iter);
-                    temp.setLockType(EXCLUSIVE);
-                    lst.emplace_back(temp);
+    list<lockable_resource> lst = lock_table[resource_name];
+    std::list<lockable_resource>::iterator iter;
+
+    for(iter = lst.begin(); iter != lst.end(); ++iter){
+        if(iter->getTxnId() == txn_id && iter->getLockType() == SHARED){
+            if(iter->getLockStatus() == WAITING){
+                lockable_resource temp = *iter;
+                auto next_iter = next(iter,1);
+                lst.erase(iter);
+                temp.setLockType(EXCLUSIVE);
+                lst.emplace_back(temp);
+                iter = next_iter;
+            }
+            else{
+                if(next(iter,1)->getLockType() == EXCLUSIVE){
+                    iter->setLockType(EXCLUSIVE);
                 }
                 else{
-                    if(next(iter,1)->getLockType() == EXCLUSIVE){
-                        iter->setLockType(EXCLUSIVE);
-                    }
-                    else{
-                        lockable_resource temp = *iter;
-                        lst.erase(iter);
-                        temp.setLockType(EXCLUSIVE);
-                        temp.setLockStatus(WAITING);
-                        lst.emplace_back(temp);
-                    }
+                    lockable_resource temp = *iter;
+                    auto next_iter = next(iter,1);
+                    lst.erase(iter);
+                    temp.setLockType(EXCLUSIVE);
+                    temp.setLockStatus(WAITING);
+                    lst.emplace_back(temp);
+                    iter = next_iter;
                 }
-            }  
-        }
-        lock_table[resource_name] = lst;
+            }
+        }  
     }
-    else
-        cout<<"\nThe resource is not present in the lock table to perform Unlock.\n"; 
+    lock_table[resource_name] = lst;
 }
 
 // function to downgrade the lock type of the resource to the transaction
 void downgrade(std::string resource_name, int txn_id){
-    cout<<"\033[103m"<<"Downgrade("<<resource_name<<","<<txn_id<<")"<<"\033[0m"<<endl;
+    cout<<"\n\033[103m"<<"Downgrade("<<resource_name<<","<<txn_id<<")"<<"\033[0m"<<endl;
 
     // Check if the resource is present in the lock table or not.
-    if (lock_table.find(resource_name) != lock_table.end()){
-        
-        list<lockable_resource> lst = lock_table[resource_name];
-        std::list<lockable_resource>::iterator iter;
+    if(lock_table.find(resource_name) == lock_table.end()){
+        cout<<"\nThe resource is not present in the lock table to perform Downgrade.\n"; 
+        return;
+    }
+  
+    list<lockable_resource> lst = lock_table[resource_name];
+    // std::list<lockable_resource>::iterator iter;
 
-        for(iter = lst.begin(); iter != lst.end(); ++iter){
-            if(iter->getTxnId() == txn_id && iter->getLockType() == EXCLUSIVE){
-                if(iter->getStatus() == GRANTED){
+    for(auto iter = lst.begin(); iter != lst.end(); ++iter){
+        if(iter->getTxnId() == txn_id){
+           if(iter->getLockType() == EXCLUSIVE){
+                if(iter->getLockStatus() == GRANTED){
                     iter->setLockType(SHARED);
-                    for(; iter!=lst.end(); ++iter){
+                    for(++iter; iter != lst.end(); ++iter){
                         if(iter->getLockType() == SHARED){
                             lockable_resource temp = *iter;
+                            auto next_iter = next(iter,1);
                             lst.erase(iter);
                             temp.setLockStatus(GRANTED);
                             lst.emplace_front(temp);
+                            iter = next_iter;
                         }
                     }                
                 }
-                else if (iter->getStatus() == WAITING){
-                    if(lst.begin()->getLockType() == SHARED && lst.begin()->getStatus() == GRANTED){
+                else if (iter->getLockStatus() == WAITING){
+                    if(lst.begin()->getLockType() == SHARED && lst.begin()->getLockStatus() == GRANTED){
                         lockable_resource temp = *iter;
+                        auto next_iter = next(iter,1);
                         lst.erase(iter);
                         temp.setLockType(SHARED);
                         temp.setLockStatus(GRANTED);
-                        lst.emplace_front(temp);                    
+                        lst.emplace_front(temp);    
+                        iter = next_iter;                
                     }
-                    else if (lst.begin()->getLockType() == EXCLUSIVE && lst.begin()->getStatus() == GRANTED){
+                    else if (lst.begin()->getLockType() == EXCLUSIVE && lst.begin()->getLockStatus() == GRANTED){
                         iter->setLockType(SHARED);
                     }
                 }
-            } 
+            }  
         }
-        lock_table[resource_name] = lst;
+        
     }
-    else
-        cout<<"\nThe resource is not present in the lock table to perform downgrade.\n"; 
+    lock_table[resource_name] = lst;
+
+      
 }
 
 
@@ -371,3 +403,32 @@ void downgrade(std::string resource_name, int txn_id){
 
         //  }
            
+
+// Input
+ 
+    // lock("AAA", 1234, SHARED);
+    // printStatus("AAA");
+
+    // lock("AAA", 5678, EXCLUSIVE);
+    // printStatus("AAA");
+    
+    // lock("AAA", 6969, SHARED);
+    // printStatus("AAA");
+
+    // unlock("AAA",1234);
+    // printStatus("AAA");
+
+    // lock("AAA", 1234, EXCLUSIVE);
+    // printStatus("AAA");
+
+    // downgrade("AAA", 5678);
+    // printStatus("AAA");
+
+    // downgrade("AAA", 1234);
+    // printStatus("AAA");
+
+    // lock("AAA",9876, SHARED);
+    // printStatus("AAA");
+    
+    // upgrade("AAA", 9876);
+    // printStatus("AAA");
